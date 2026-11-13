@@ -1,0 +1,30 @@
+<!-- Template: Status Badge -->
+<!-- Rubrik 1.3: Conditional v-if/v-else-if/v-else -->
+<!-- Rubrik 1.8: Vue Component custom element <status-badge> -->
+<script type="text/x-template" id="tpl-status-badge">
+  <span class="status-cell">
+    <span
+      v-if="qty === 0"
+      class="badge badge-kosong"
+      title="Stok Kosong"
+    >
+      🚨 Kosong
+    </span>
+    <span
+      v-else-if="qty < safety"
+      class="badge badge-menipis"
+      title="Stok Menipis"
+    >
+      ⚠️ Menipis
+    </span>
+    <span
+      v-else
+      class="badge badge-aman"
+      title="Stok Aman"
+    >
+      ✅ Aman
+    </span>
+    <!-- Tooltip catatanHTML saat hover (Rubrik 1.6: mouse event) -->
+    <span class="tooltip-box" v-html="catatan"></span>
+  </span>
+</script>

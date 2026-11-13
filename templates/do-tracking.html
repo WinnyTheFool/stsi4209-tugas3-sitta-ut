@@ -1,0 +1,174 @@
+<!-- Template: DO Tracking Component -->
+<!-- Rubrik 1.1: Vue Component & Template -->
+<!-- Rubrik 1.2: v-for, v-bind, v-model, v-text, Vue Filter -->
+<!-- Rubrik 1.3: v-if/v-else/v-show -->
+<!-- Rubrik 1.4: computed, methods -->
+<!-- Rubrik 1.6: search by DO or NIM, Enter to search, Esc to reset, add progress -->
+<script type="text/x-template" id="tpl-do-tracking">
+  <div>
+    <!-- Search Bar DO / NIM -->
+    <div class="card card-body mb-1" style="margin-bottom:1.5rem;">
+      <div class="search-bar">
+        <!-- Rubrik 1.6: Event Keyboard Enter & Esc -->
+        <input
+          type="text"
+          v-model="searchKeyword"
+          placeholder="Cari berdasarkan Nomor DO (DO2025-0001) atau NIM (123456789)..."
+          @keyup.enter="lacak"
+          @keyup.esc="resetCari"
+          autofocus
+        >
+        <button class="btn btn-primary" @click="lacak">🔍 Lacak</button>
+        <button class="btn btn-secondary" @click="resetCari">↺ Reset</button>
+      </div>
+      <p class="text-xs text-muted" style="margin-top:0.4rem;">
+        💡 Tekan <strong>Enter</strong> untuk melacak, tekan <strong>Esc</strong> untuk mereset pencarian.
+      </p>
+    </div>
+
+    <!-- Hasil Pencarian -->
+    <!-- Rubrik 1.3: v-if currentDo ditemukan -->
+    <div v-if="currentDo" class="tracking-grid">
+      <!-- Info DO Card -->
+      <div class="card card-body">
+        <div class="info-row">
+          <div class="label">Nomor DO</div>
+          <!-- Rubrik 1.2: v-text directive -->
+          <div class="value text-mono" style="color:#1e3a8a; font-size:1.15rem;" v-text="currentDoKey"></div>
+        </div>
+
+        <div class="info-row">
+          <div class="label">NIM Mahasiswa</div>
+          <div class="value text-mono">{{ currentDo.nim }}</div>
+        </div>
+
+        <div class="info-row">
+          <div class="label">Nama Mahasiswa</div>
+          <div class="value">{{ currentDo.nama }}</div>
+        </div>
+
+        <div class="info-row">
+          <div class="label">Ekspedisi</div>
+          <div class="value">
+            <span class="badge badge-proses">{{ currentDo.ekspedisi }}</span>
+          </div>
+        </div>
+
+        <div class="info-row">
+          <div class="label">Paket Bahan Ajar</div>
+          <div class="value" style="color:#2563eb;">{{ currentDo.paket }}</div>
+        </div>
+
+        <!-- Rubrik 1.2: Vue Filter formatTanggal -->
+        <div class="info-row">
+          <div class="label">Tanggal Kirim</div>
+          <div class="value">{{ currentDo.tanggalKirim | formatTanggal }}</div>
+        </div>
+
+        <!-- Rubrik 1.2: Vue Filter formatRupiah -->
+        <div class="info-row">
+          <div class="label">Total Biaya</div>
+          <div class="value text-mono" style="color:#059669; font-size:1.1rem;">{{ currentDo.total | formatRupiah }}</div>
+        </div>
+
+        <div class="info-row">
+          <div class="label">Status Pengiriman</div>
+          <div class="value">
+            <span v-if="currentDo.status === 'Selesai'" class="badge badge-selesai">✅ Selesai</span>
+            <span v-else class="badge badge-proses">🚚 {{ currentDo.status }}</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Timeline Perjalanan Card -->
+      <div class="card card-body">
+        <div class="flex justify-between align-center mb-1">
+          <h4 style="font-size:0.95rem; font-weight:700; color:#1e3a8a;">Riwayat Perjalanan Bahan Ajar</h4>
+          <span class="text-xs text-muted">Total: {{ currentDo.perjalanan.length }} titik log</span>
+        </div>
+
+        <!-- Timeline Log -->
+        <!-- Rubrik 1.2: v-for array rendering -->
+        <div class="timeline" style="margin-top:1.25rem;">
+          <div class="timeline-item" v-for="(log, idx) in currentDo.perjalanan" :key="idx">
+            <div class="timeline-dot"></div>
+            <span class="timeline-time">{{ log.waktu }}</span>
+            <div class="timeline-desc">{{ log.keterangan }}</div>
+          </div>
+        </div>
+
+        <!-- Rubrik 1.6: Fitur Tambah Status Progress Perjalanan Baru -->
+        <div class="progress-form">
+          <h5>+ Tambah Update Progress Pengiriman</h5>
+          <div class="flex gap-2">
+            <input
+              type="text"
+              v-model="newProgressDesc"
+              placeholder="Contoh: Diterima oleh yang bersangkutan"
+              class="w-full"
+              style="border:1px solid #cbd5e1; border-radius:6px; padding:0.4rem 0.75rem; font-size:0.82rem;"
+              @keyup.enter="tambahProgress"
+            >
+            <button class="btn btn-primary btn-sm" @click="tambahProgress" style="white-space:nowrap;">+ Tambah Log</button>
+          </div>
+          <p class="text-xs text-muted" style="margin-top:0.35rem;">
+            ⏱️ Waktu otomatis diambil dari <em>local time</em> via objek <code>Date()</code>.
+          </p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Alert jika pencarian tidak ditemukan -->
+    <!-- Rubrik 1.3: v-else-if pencarian nihil -->
+    <div v-else-if="sudahMencari && !currentDo" class="alert alert-error">
+      ❌ Nomor DO atau NIM <strong>"{{ searchKeyword }}"</strong> tidak ditemukan dalam sistem.
+    </div>
+
+    <!-- Tabel Seluruh DO -->
+    <div class="card" style="margin-top:1.5rem;">
+      <div class="card-header">
+        <span>Semua Data Delivery Order (DO)</span>
+        <span class="text-muted text-sm">Total: {{ doList.length }} data</span>
+      </div>
+      <div class="table-wrapper">
+        <table>
+          <thead>
+            <tr>
+              <th>No. DO</th>
+              <th>NIM & Nama</th>
+              <th>Ekspedisi</th>
+              <th>Paket</th>
+              <th>Tanggal Kirim</th>
+              <th>Total Biaya</th>
+              <th>Status</th>
+              <th>Aksi</th>
+            </tr>
+          </thead>
+          <tbody>
+            <!-- Rubrik 1.2: v-for pada array DO -->
+            <tr v-for="d in doList" :key="d.key">
+              <td class="text-mono fw-bold" style="color:#1e3a8a;">{{ d.key }}</td>
+              <td>
+                <div class="fw-bold">{{ d.nama }}</div>
+                <div class="text-xs text-muted text-mono">{{ d.nim }}</div>
+              </td>
+              <td><span class="badge badge-proses" style="font-size:0.72rem;">{{ d.ekspedisi }}</span></td>
+              <td><span class="text-mono text-sm">{{ d.paket }}</span></td>
+              <!-- Rubrik 1.2: Vue Filter formatTanggal -->
+              <td class="text-sm">{{ d.tanggalKirim | formatTanggal }}</td>
+              <!-- Rubrik 1.2: Vue Filter formatRupiah -->
+              <td class="text-mono fw-bold text-sm" style="color:#059669;">{{ d.total | formatRupiah }}</td>
+              <td>
+                <span v-if="d.status === 'Selesai'" class="badge badge-selesai">Selesai</span>
+                <span v-else class="badge badge-proses">{{ d.status }}</span>
+              </td>
+              <td>
+                <button class="btn btn-secondary btn-xs" @click="pilihDo(d.key)">Lihat Detail</button>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</script>

@@ -1,0 +1,122 @@
+<!-- Template: Order Form Component (Buat DO Baru) -->
+<!-- Rubrik 1.1: Vue Component & Template -->
+<!-- Rubrik 1.2: v-bind, v-model, dynamic select, Vue Filter -->
+<!-- Rubrik 1.3: v-show untuk preview detail paket -->
+<!-- Rubrik 1.5: watcher paket terpilih -->
+<!-- Rubrik 1.6: form validasi, generate no DO otomatis -->
+<script type="text/x-template" id="tpl-order-form">
+  <div class="card card-body" style="max-width:760px; margin:0 auto;">
+    <div style="margin-bottom:1.5rem; border-bottom:1px solid #e2e8f0; pb:1rem; padding-bottom:1rem;">
+      <h3 style="font-size:1.15rem; font-weight:700; color:#1e3a8a;">Formulir Pemesanan Bahan Ajar (Buat DO Baru)</h3>
+      <p class="text-sm text-muted">Isi formulir di bawah ini untuk menerbitkan Delivery Order baru.</p>
+    </div>
+
+    <!-- Error Alert -->
+    <div class="alert alert-error" v-if="formError">⚠️ {{ formError }}</div>
+
+    <form @submit.prevent="submitOrder">
+      <div class="form-grid">
+        <!-- Nomor DO (Auto-generated, Readonly) -->
+        <div class="form-group" style="grid-column: 1 / -1;">
+          <label>Nomor Delivery Order (Auto Generated)</label>
+          <input
+            type="text"
+            :value="nextDoNumber"
+            readonly
+            class="text-mono"
+            style="background:#f8fafc; font-weight:700; color:#1e3a8a;"
+          >
+          <span class="form-hint">Format otomatis: DO + Tahun Berjalan + Sequence (contoh: DO2025-002)</span>
+        </div>
+
+        <!-- NIM Mahasiswa -->
+        <div class="form-group">
+          <label>NIM Mahasiswa <span style="color:red">*</span></label>
+          <input
+            type="text"
+            v-model="form.nim"
+            placeholder="Contoh: 123456789"
+            :class="{ invalid: errors.nim }"
+            class="text-mono"
+            required
+          >
+          <span class="form-error" v-if="errors.nim">{{ errors.nim }}</span>
+        </div>
+
+        <!-- Nama Mahasiswa -->
+        <div class="form-group">
+          <label>Nama Mahasiswa <span style="color:red">*</span></label>
+          <input
+            type="text"
+            v-model="form.nama"
+            placeholder="Nama Lengkap Mahasiswa"
+            :class="{ invalid: errors.nama }"
+            required
+          >
+          <span class="form-error" v-if="errors.nama">{{ errors.nama }}</span>
+        </div>
+
+        <!-- Pilihan Ekspedisi dari pengirimanList -->
+        <div class="form-group">
+          <label>Ekspedisi Pengiriman <span style="color:red">*</span></label>
+          <select v-model="form.ekspedisi" :class="{ invalid: errors.ekspedisi }" required>
+            <option value="" disabled>-- Pilih Ekspedisi --</option>
+            <option v-for="e in pengirimanList" :key="e.kode" :value="e.kode">
+              {{ e.kode }} - {{ e.nama }}
+            </option>
+          </select>
+          <span class="form-error" v-if="errors.ekspedisi">{{ errors.ekspedisi }}</span>
+        </div>
+
+        <!-- Pilihan Paket Bahan Ajar -->
+        <div class="form-group">
+          <label>Paket Bahan Ajar <span style="color:red">*</span></label>
+          <select v-model="form.paketKode" :class="{ invalid: errors.paketKode }" required>
+            <option value="" disabled>-- Pilih Paket --</option>
+            <option v-for="p in paketList" :key="p.kode" :value="p.kode">
+              {{ p.kode }} — {{ p.nama }}
+            </option>
+          </select>
+          <span class="form-error" v-if="errors.paketKode">{{ errors.paketKode }}</span>
+        </div>
+
+        <!-- Tanggal Pengiriman (Manual atau Default Hari Ini) -->
+        <div class="form-group" style="grid-column: 1 / -1;">
+          <label>Tanggal Pengiriman <span style="color:red">*</span></label>
+          <input
+            type="date"
+            v-model="form.tanggalKirim"
+            :class="{ invalid: errors.tanggalKirim }"
+            required
+          >
+          <span class="form-hint">Otomatis terisi tanggal hari ini melalui fungsi <code>Date()</code>, atau dapat diganti manual.</span>
+          <span class="form-error" v-if="errors.tanggalKirim">{{ errors.tanggalKirim }}</span>
+        </div>
+      </div>
+
+      <!-- Preview Paket Bahan Ajar (Rubrik 1.3: v-show conditional) -->
+      <!-- Rubrik 1.5: Watcher paketKode memicu update preview -->
+      <div v-show="selectedPaket" class="paket-preview">
+        <div class="nama">📦 {{ selectedPaket ? selectedPaket.nama : '' }} ({{ selectedPaket ? selectedPaket.kode : '' }})</div>
+        <div class="isi">
+          <strong>Isi Modul Bahan Ajar:</strong>
+          <span v-if="selectedPaket">{{ selectedPaket.isi.join(', ') }}</span>
+        </div>
+        <div class="harga">
+          Total Biaya: {{ (selectedPaket ? selectedPaket.harga : 0) | formatRupiah }}
+        </div>
+      </div>
+
+      <!-- Submit Actions -->
+      <div class="flex justify-between align-center" style="margin-top:1.5rem; pt:1rem; border-top:1px solid #e2e8f0; padding-top:1rem;">
+        <button type="button" class="btn btn-secondary" @click="resetForm">↺ Bersihkan Form</button>
+        <button type="submit" class="btn btn-primary">🚀 Terbitkan Delivery Order</button>
+      </div>
+    </form>
+
+    <!-- Success Feedback -->
+    <div class="alert alert-success mt-1" v-if="successMsg" style="margin-top:1rem;">
+      ✅ {{ successMsg }}
+    </div>
+  </div>
+</script>
